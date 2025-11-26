@@ -15,6 +15,7 @@ function loginUser(username, password) {
   
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
+    // ປຽບທຽບແບບ String ເພື່ອກັນພາດ
     if (String(data[i][0]) === String(username) && String(data[i][1]) === String(password)) {
       return { success: true, fullname: data[i][2], username: data[i][0] };
     }
@@ -22,10 +23,9 @@ function loginUser(username, password) {
   return { success: false };
 }
 
-// --- 2. DATA HANDLING (Dropdowns & Settings) ---
+// --- 2. DATA HANDLING ---
 function getAllData() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  
   var getList = function(sheetName) {
     var sheet = ss.getSheetByName(sheetName);
     return sheet ? sheet.getDataRange().getValues().slice(1).flat().filter(String) : [];
@@ -40,77 +40,71 @@ function getAllData() {
 
 // --- 3. ADD TRANSACTION ---
 function addTransaction(formObject, userFullname) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Transactions');
-  if (!sheet) return "Error: Missing Transactions Sheet";
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Transactions');
+    if (!sheet) return "Error: Missing Transactions Sheet";
 
-  var timestamp = new Date();
-  var id = new Date().getTime(); // Unique ID
-  
-  // Logic: Bank is saved only if it is Income AND Transfer
-  var bankAcc = (formObject.type === 'Income' && formObject.method === 'Transfer') ? formObject.bankAccount : '';
-  
-  // แปลง string date เป็น Date object เพื่อให้ Google Sheets เก็บเป็นวันที่จริง
-  var transactionDate = new Date(formObject.date);
-  
-  sheet.appendRow([
-    "'"+id, // Force string for ID
-    transactionDate, // บันทึกเป็น Date object แทน string
-    formObject.type,
-    formObject.category,
-    Number(formObject.amount), // แปลงเป็นตัวเลข
-    formObject.desc,
-    formObject.method,
-    bankAcc,
-    userFullname,
-    timestamp
-  ]);
-  return "Success";
+    var timestamp = new Date();
+    var id = new Date().getTime(); 
+    
+    // **ແກ້ໄຂຂໍ້ 4:** ຖ້າເປັນ Transfer ໃຫ້ບັນທຶກ Bank ໄດ້ເລີຍ (ບໍ່ຈຳກັດວ່າຕ້ອງເປັນ Income)
+    var bankAcc = (formObject.method === 'Transfer') ? formObject.bankAccount : '';
+    
+    // ແປງຂໍ້ມູນກ່ອນບັນທຶກ
+    var transactionDate = new Date(formObject.date);
+    // **ແກ້ໄຂຂໍ້ 5:** ຕັດເຄື່ອງໝາຍຈຸດ (,) ອອກຈາກຈຳນວນເງິນກ່ອນບັນທຶກ
+    var amountClean = String(formObject.amount).replace(/,/g, ""); 
+
+    sheet.appendRow([
+      "'"+id,
+      transactionDate, 
+      formObject.type,
+      formObject.category,
+      Number(amountClean), // ບັນທຶກເປັນຕົວເລກ
+      formObject.desc,
+      formObject.method,
+      bankAcc,
+      userFullname,
+      timestamp
+    ]);
+    return "Success";
+  } catch(e) {
+    return "Error: " + e.toString();
+  }
 }
 
-// --- 4. DASHBOARD REPORT (FIXED & SAFER) ---
+// --- 4. DASHBOARD & REPORT DATA ---
 function getDashboardData(startDate, endDate) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName('Transactions');
     
-    // ກັນພາດ: ຖ້າບໍ່ພົບ Sheet
-    if (!sheet) return { totalIncome: 0, totalExpense: 0, transactions: [] };
-    
-    // ກັນພາດ: ຖ້າບໍ່ມີຂໍ້ມູນ (ມີແຕ່ Header)
-    if (sheet.getLastRow() < 2) return { totalIncome: 0, totalExpense: 0, transactions: [] };
+    if (!sheet || sheet.getLastRow() < 2) {
+      return { totalIncome: 0, totalExpense: 0, transactions: [] };
+    }
 
     var data = sheet.getDataRange().getValues();
-    data.shift(); // ລຶບ Header
+    data.shift(); // Remove Header
 
     var tz = ss.getSpreadsheetTimeZone(); 
     
-    // ແປງ Filter ໃຫ້ເປັນ Date Object ເພື່ອປຽບທຽບ
-    var startObj = new Date(startDate);
-    startObj.setHours(0, 0, 0, 0);
-    
-    var endObj = new Date(endDate);
-    endObj.setHours(23, 59, 59, 999);
+    // ຕັ້ງຄ່າວັນທີສຳລັບປຽບທຽບ
+    var startObj = new Date(startDate); startObj.setHours(0,0,0,0);
+    var endObj = new Date(endDate); endObj.setHours(23,59,59,999);
 
     var filtered = data.filter(function(row) {
-      var rowDateValue = row[1]; 
-      if (!rowDateValue) return false;
-
+      if (!row[1]) return false;
       try {
-        var rDate = new Date(rowDateValue);
-        // ກວດສອບວັນທີ
+        var rDate = new Date(row[1]);
         return rDate.getTime() >= startObj.getTime() && rDate.getTime() <= endObj.getTime();
-      } catch (e) {
-        return false;
-      }
+      } catch (e) { return false; }
     });
 
     var summary = { totalIncome: 0, totalExpense: 0, transactions: [] };
 
-    // Sort ໃໝ່ -> ເກົ່າ
-    filtered.sort(function(a, b) {
-      return new Date(b[1]) - new Date(a[1]);
-    });
+    // Sort Newest -> Oldest
+    filtered.sort(function(a, b) { return new Date(b[1]) - new Date(a[1]); });
 
     filtered.forEach(function(row) {
       var amount = Number(row[4]); 
@@ -120,17 +114,11 @@ function getDashboardData(startDate, endDate) {
       if (type === 'Income') summary.totalIncome += amount;
       if (type === 'Expense') summary.totalExpense += amount;
       
-      // *** ຈຸດສຳຄັນທີ່ແກ້ໄຂ: ແປງວັນທີເປັນ String ກ່ອນສົ່ງກັບ Client ***
-      // ການສົ່ງ Date Object ໂດຍກົງມັກຈະເກີດບັນຫາ null ເວລາສົ່ງຜ່ານ google.script.run
-      var dateString = "";
-      try {
-        dateString = Utilities.formatDate(new Date(row[1]), tz, "yyyy-MM-dd");
-      } catch(e) {
-        dateString = startDate; // Fallback
-      }
+      // ແປງວັນທີເປັນ String ສົ່ງກັບໄປ (ປ້ອງກັນ Error)
+      var dateStr = Utilities.formatDate(new Date(row[1]), tz, "yyyy-MM-dd");
 
       summary.transactions.push({
-        date: dateString, // ສົ່ງເປັນ Text ແທນ Date Object
+        date: dateStr, 
         type: type,
         category: row[3],
         amount: amount,
@@ -139,16 +127,15 @@ function getDashboardData(startDate, endDate) {
       });
     });
 
-    return summary; // ຕ້ອງ Return Object ສະເໝີ
+    return summary;
   
   } catch (error) {
-    // ຖ້າ Error ໃຫ້ Return Object ວ່າງໆ ພ້ອມແຈ້ງ Error ໃນ Log
     Logger.log("SERVER ERROR: " + error);
     return { totalIncome: 0, totalExpense: 0, transactions: [] };
   }
 }
 
-// --- 5. SETTINGS MANAGER (Add/Delete) ---
+// --- 5. SETTINGS MANAGER ---
 function addSettingItem(type, value) {
   var sheetName = '';
   if (type === 'income') sheetName = 'Settings_Income';
@@ -158,8 +145,7 @@ function addSettingItem(type, value) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
   if(sheet) sheet.appendRow([value]);
-  
-  return getAllData(); // Return updated list
+  return getAllData();
 }
 
 function deleteSettingItem(type, value) {
@@ -171,7 +157,6 @@ function deleteSettingItem(type, value) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(sheetName);
   var data = sheet.getDataRange().getValues();
-  
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] == value) {
       sheet.deleteRow(i + 1);
