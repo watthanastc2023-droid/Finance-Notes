@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { background-color: #f0f2f5; font-family: 'Noto Sans Lao', sans-serif; }
+    
+    /* Login Styles */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0d6efd 0%, #0099ff 100%);
+    }
+    .login-card { width: 100%; max-width: 400px; border-radius: 15px; border: none; }
+    
+    /* App Styles */
+    .navbar { background-color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    .card-summary { border-radius: 12px; color: white; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .bg-income { background: linear-gradient(to right, #11998e, #38ef7d); }
+    .bg-expense { background: linear-gradient(to right, #cb2d3e, #ef473a); }
+    .bg-balance { background: linear-gradient(to right, #2980b9, #6dd5fa); }
+    
+    .nav-pills .nav-link { border-radius: 20px; padding: 8px 20px; color: #555; font-weight: 500; }
+    .nav-pills .nav-link.active { background-color: #0d6efd; color: white; }
+    
+    #app-content, #page-dashboard, #page-add, #page-settings { display: none; }
+    .table-responsive { border-radius: 10px; overflow: hidden; background: white; }
+  </style>
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="card login-card p-4 shadow-lg">
+      <div class="text-center mb-4">
+        <h3 class="fw-bold text-primary"><i class="fas fa-wallet"></i> ລະບົບການເງິນ</h3>
+        <small class="text-muted">ກະລຸນາເຂົ້າສູ່ລະບົບ</small>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">ຊື່ຜູ້ໃຊ້ (Username)</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-user"></i></span>
+          <input type="text" id="loginUser" class="form-control" placeholder="Enter username">
+        </div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label">ລະຫັດຜ່ານ (Password)</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="fas fa-lock"></i></span>
+          <input type="password" id="loginPass" class="form-control" placeholder="Enter password">
+        </div>
+      </div>
+      <button onclick="doLogin()" id="btnLogin" class="btn btn-primary w-100 py-2 fw-bold">ເຂົ້າສູ່ລະບົບ</button>
+      <div id="loginError" class="alert alert-danger mt-3 text-center p-2" style="display:none;">
+        <i class="fas fa-exclamation-circle"></i> ຊື່ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ
+      </div>
+    </div>
+  </div>
+
+  <div id="app-content">
+    
+    <nav class="navbar navbar-expand px-3 sticky-top">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1 fw-bold text-primary"><i class="fas fa-chart-pie"></i> Finance Tracker</span>
+        <div class="d-flex align-items-center">
+          <div class="text-end me-3 d-none d-sm-block">
+            <div class="fw-bold small" id="displayFullname">User</div>
+            <div class="text-muted small" style="font-size: 0.75rem;">Online</div>
+          </div>
+          <button onclick="doLogout()" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-3">
+      <ul class="nav nav-pills justify-content-center bg-white p-2 rounded shadow-sm" style="width: fit-content; margin: 0 auto;">
+        <li class="nav-item"><button class="nav-link active" onclick="showPage('dashboard')"><i class="fas fa-home"></i> ພາບລວມ</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="showPage('add')"><i class="fas fa-plus-circle"></i> ເພີ່ມຂໍ້ມູນ</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="showPage('settings')"><i class="fas fa-cog"></i> ຕັ້ງຄ່າ</button></li>
+      </ul>
+    </div>
+
+    <div id="page-dashboard" class="container mt-4 pb-5">
+      <div class="card p-3 mb-4 border-0 shadow-sm">
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-md-4">
+            <label class="small text-muted">ວັນທີເລີ່ມ</label>
+            <input type="date" id="filterStart" class="form-control form-control-sm">
+          </div>
+          <div class="col-6 col-md-4">
+            <label class="small text-muted">ວັນທີສິ້ນສຸດ</label>
+            <input type="date" id="filterEnd" class="form-control form-control-sm">
+          </div>
+          <div class="col-12 col-md-4">
+            <button onclick="loadDashboard()" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> ຄົ້ນຫາ</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+          <div class="card-summary bg-income">
+            <div class="d-flex justify-content-between">
+              <div>
+                <div class="small opacity-75">ລາຍຮັບລວມ</div>
+                <h3 class="fw-bold mb-0" id="sumIncome">0</h3>
+              </div>
+              <div class="fs-1 opacity-25"><i class="fas fa-arrow-down"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card-summary bg-expense">
+             <div class="d-flex justify-content-between">
+              <div>
+                <div class="small opacity-75">ລາຍຈ່າຍລວມ</div>
+                <h3 class="fw-bold mb-0" id="sumExpense">0</h3>
+              </div>
+              <div class="fs-1 opacity-25"><i class="fas fa-arrow-up"></i></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="card-summary bg-balance">
+             <div class="d-flex justify-content-between">
+              <div>
+                <div class="small opacity-75">ຄົງເຫຼືອ</div>
+                <h3 class="fw-bold mb-0" id="sumBalance">0</h3>
+              </div>
+              <div class="fs-1 opacity-25"><i class="fas fa-wallet"></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h6 class="text-muted fw-bold mb-3">ລາຍການເຄື່ອນໄຫວ</h6>
+      <div class="table-responsive shadow-sm">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light small text-muted">
+            <tr>
+              <th>ວັນທີ</th>
+              <th>ໝວດໝູ່</th>
+              <th>ລາຍລະອຽດ</th>
+              <th class="text-end">ຈຳນວນເງິນ</th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody" class="border-top-0">
+            </tbody>
+        </table>
+        <div id="loadingDash" class="text-center p-3 text-muted" style="display:none;">ກຳລັງໂຫຼດ...</div>
+      </div>
+    </div>
+
+    <div id="page-add" class="container mt-4 pb-5">
+      <div class="card border-0 shadow-sm mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-white py-3 text-center"><h5 class="mb-0 fw-bold text-primary">ບັນທຶກ ລາຍຮັບ-ລາຍຈ່າຍ</h5></div>
+        <div class="card-body p-4">
+          <form id="addForm">
+            <div class="mb-3">
+              <label class="form-label">ວັນທີ</label>
+              <input type="date" name="date" id="inputDate" class="form-control" required>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">ປະເພດ</label>
+              <select name="type" id="inputType" class="form-select" onchange="updateFormUI()" required>
+                <option value="Expense">ລາຍຈ່າຍ (Expense)</option>
+                <option value="Income">ລາຍຮັບ (Income)</option>
+              </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">ໝວດໝູ່</label>
+              <select name="category" id="inputCategory" class="form-select" required>
+                </select>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">ຈຳນວນເງິນ</label>
+              <input type="number" name="amount" class="form-control" placeholder="0.00" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">ໝາຍເຫດ (ຖ້າມີ)</label>
+              <input type="text" name="desc" class="form-control" placeholder="ອະທິບາຍເພີ່ມເຕີມ...">
+            </div>
+
+            <div class="mb-3 bg-light p-3 rounded">
+              <label class="form-label d-block mb-2">ຊ່ອງທາງການເງິນ</label>
+              <div class="d-flex gap-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="method" value="Cash" checked onchange="updateFormUI()">
+                  <label class="form-check-label">ເງິນສົດ</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="method" value="Transfer" onchange="updateFormUI()">
+                  <label class="form-check-label">ເງິນໂອນ</label>
+                </div>
+              </div>
+              
+              <div class="mt-3" id="bankDiv" style="display:none;">
+                <label class="form-label small text-muted">ຮັບເຂົ້າບັນຊີ (Bank)</label>
+                <select name="bankAccount" id="inputBank" class="form-select">
+                  </select>
+              </div>
+            </div>
+
+            <button type="button" onclick="submitTransaction()" class="btn btn-primary w-100 py-2 fw-bold">
+              <i class="fas fa-save"></i> ບັນທຶກຂໍ້ມູນ
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="page-settings" class="container mt-4 pb-5">
+      <h5 class="mb-3 border-start border-4 border-primary ps-2 fw-bold">ຈັດການຂໍ້ມູນລະບົບ</h5>
+      
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-success text-white">ໝວດໝູ່ ລາຍຮັບ</div>
+            <div class="card-body">
+              <div class="input-group mb-3">
+                <input type="text" id="newIncomeCat" class="form-control form-control-sm" placeholder="ຊື່ໝວດໝູ່...">
+                <button class="btn btn-sm btn-outline-success" onclick="addItem('income')">ເພີ່ມ</button>
+              </div>
+              <ul class="list-group list-group-flush small" id="listIncome"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-danger text-white">ໝວດໝູ່ ລາຍຈ່າຍ</div>
+            <div class="card-body">
+              <div class="input-group mb-3">
+                <input type="text" id="newExpenseCat" class="form-control form-control-sm" placeholder="ຊື່ໝວດໝູ່...">
+                <button class="btn btn-sm btn-outline-danger" onclick="addItem('expense')">ເພີ່ມ</button>
+              </div>
+              <ul class="list-group list-group-flush small" id="listExpense"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">ບັນຊີທະນາຄານ</div>
+            <div class="card-body">
+              <div class="input-group mb-3">
+                <input type="text" id="newBank" class="form-control form-control-sm" placeholder="ຊື່ທະນາຄານ...">
+                <button class="btn btn-sm btn-outline-primary" onclick="addItem('bank')">ເພີ່ມ</button>
+              </div>
+              <ul class="list-group list-group-flush small" id="listBank"></ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div> <script>
+    let currentUser = {};
+    let globalData = { income: [], expense: [], banks: [] };
+
+    // --- INIT ---
+    window.onload = function() {
+      // Set Default Date
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('filterStart').value = today.substring(0, 8) + '01'; // First day of month
+      document.getElementById('filterEnd').value = today;
+      document.getElementById('inputDate').value = today;
+
+      // Load Settings Data
+      loadAllData();
+    };
+
+    function loadAllData() {
+       google.script.run.withSuccessHandler(data => {
+        globalData = data;
+        renderSettingsLists();
+        updateFormUI(); // Init Add Form Dropdowns
+      }).getAllData();
+    }
+
+    // --- NAVIGATION ---
+    function showPage(pageId) {
+      document.querySelectorAll('#page-dashboard, #page-add, #page-settings').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+      
+      // Highlight Button
+      const btn = document.querySelector(`button[onclick="showPage('${pageId}')"]`);
+      if(btn) btn.classList.add('active');
+
+      document.getElementById('page-' + pageId).style.display = 'block';
+
+      if(pageId === 'dashboard') loadDashboard();
+    }
+
+    // --- LOGIN ---
+    function doLogin() {
+      const u = document.getElementById('loginUser').value;
+      const p = document.getElementById('loginPass').value;
+      const btn = document.getElementById('btnLogin');
+      
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ກຳລັງກວດສອບ...';
+      btn.disabled = true;
+
+      google.script.run.withSuccessHandler(res => {
+        btn.innerHTML = 'ເຂົ້າສູ່ລະບົບ';
+        btn.disabled = false;
+        if(res.success) {
+          currentUser = res;
+          document.getElementById('displayFullname').innerText = res.fullname;
+          document.getElementById('login-screen').style.display = 'none';
+          document.getElementById('app-content').style.display = 'block';
+          showPage('dashboard');
+        } else {
+          document.getElementById('loginError').style.display = 'block';
+        }
+      }).loginUser(u, p);
+    }
+
+    function doLogout() {
+      location.reload();
+    }
+
+    // --- ADD TRANSACTION LOGIC ---
+    function updateFormUI() {
+      const type = document.getElementById('inputType').value;
+      const isTransfer = document.querySelector('input[name="method"]:checked').value === 'Transfer';
+      
+      // 1. Update Category Dropdown
+      const catSelect = document.getElementById('inputCategory');
+      catSelect.innerHTML = '';
+      const list = (type === 'Income') ? globalData.income : globalData.expense;
+      list.forEach(item => {
+        let opt = document.createElement('option');
+        opt.value = item; opt.text = item;
+        catSelect.add(opt);
+      });
+
+      // 2. Toggle Bank Dropdown (Only show if Income AND Transfer)
+      const bankDiv = document.getElementById('bankDiv');
+      const bankSelect = document.getElementById('inputBank');
+      
+      if (type === 'Income' && isTransfer) {
+        bankDiv.style.display = 'block';
+        bankSelect.innerHTML = '';
+        globalData.banks.forEach(b => {
+             let opt = document.createElement('option');
+             opt.value = b; opt.text = b;
+             bankSelect.add(opt);
+        });
+      } else {
+        bankDiv.style.display = 'none';
+        bankSelect.innerHTML = '';
+      }
+    }
+
+    function submitTransaction() {
+      const form = document.getElementById('addForm');
+      if(!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const formData = {
+        date: form.date.value,
+        type: form.type.value,
+        category: form.category.value,
+        amount: form.amount.value,
+        desc: form.desc.value,
+        method: form.method.value,
+        bankAccount: form.bankAccount ? form.bankAccount.value : ''
+      };
+
+      const btn = document.querySelector('#addForm button');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = 'ກຳລັງບັນທຶກ...'; btn.disabled = true;
+
+      google.script.run.withSuccessHandler(res => {
+        alert("ບັນທຶກສຳເລັດ!");
+        btn.innerHTML = originalText; btn.disabled = false;
+        
+        // Reset Form specific fields but keep date
+        form.amount.value = '';
+        form.desc.value = '';
+        form.method[0].checked = true; // Set back to Cash
+        updateFormUI();
+      }).addTransaction(formData, currentUser.fullname);
+    }
+
+    // --- DASHBOARD LOGIC ---
+    function loadDashboard() {
+      const s = document.getElementById('filterStart').value;
+      const e = document.getElementById('filterEnd').value;
+      const tbody = document.getElementById('transactionTableBody');
+      const loader = document.getElementById('loadingDash');
+
+      console.log('Loading dashboard with dates:', s, 'to', e);
+
+      tbody.innerHTML = '';
+      loader.style.display = 'block';
+
+      google.script.run
+        .withSuccessHandler(data => {
+          console.log('Data received:', data);
+          loader.style.display = 'none';
+          
+          // ตรวจสอบว่าได้ข้อมูลมาหรือไม่
+          if (!data || data === null) {
+            console.error('Received null data from server');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger"><i class="fas fa-exclamation-triangle"></i> ບໍ່ສາມາດດຶງຂໍ້ມູນໄດ້</td></tr>';
+            return;
+          }
+          
+          // Formatter
+          const fmt = new Intl.NumberFormat('en-US');
+
+          // Update Cards
+          document.getElementById('sumIncome').innerText = fmt.format(data.totalIncome);
+          document.getElementById('sumExpense').innerText = fmt.format(data.totalExpense);
+          document.getElementById('sumBalance').innerText = fmt.format(data.totalIncome - data.totalExpense);
+
+          console.log('Total transactions:', data.transactions.length);
+
+          // Update Table
+          if(data.transactions.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-muted">ບໍ່ມີຂໍ້ມູນໃນຊ່ວງວັນທີນີ້</td></tr>';
+              return;
+          }
+
+          data.transactions.forEach(row => {
+            // ແກ້ໄຂການ Format ວັນທີ
+            // ເນື່ອງຈາກ server ສົ່ງມາເປັນ "2025-11-25" ແລ້ວ ເຮົາເອົາມາແຍກໄດ້ເລີຍ
+            let dateParts = row.date.split('-'); // [2025, 11, 25]
+            let dateStr = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`; // ປ່ຽນເປັນ 25/11/2025
+            
+            let badge = row.type === 'Income' ? 
+              `<span class="badge bg-success bg-opacity-10 text-success rounded-pill">Income</span>` : 
+              `<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">Expense</span>`;
+              
+            let bankBadge = row.bank ? `<br><small class="text-primary"><i class="fas fa-university"></i> ${row.bank}</small>` : '';
+
+            let tr = `<tr>
+              <td class="small">${dateStr}</td>
+              <td>${badge} <div class="small fw-bold">${row.category}</div></td>
+              <td><div class="text-truncate" style="max-width: 150px;">${row.desc}</div>${bankBadge}</td>
+              <td class="text-end fw-bold ${row.type === 'Income' ? 'text-success':'text-danger'}">
+                  ${row.type === 'Income' ? '+':'-'} ${fmt.format(row.amount)}
+              </td>
+            </tr>`;
+            tbody.innerHTML += tr;
+          });
+
+        })
+        .withFailureHandler(error => {
+          console.error('Error loading dashboard:', error);
+          loader.style.display = 'none';
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center py-3 text-danger"><i class="fas fa-exclamation-triangle"></i> ເກີດຂໍ້ຜິດພາດ: ' + error.message + '</td></tr>';
+        })
+        .getDashboardData(s, e);
+    }
+
+    // --- SETTINGS LOGIC ---
+    function renderSettingsLists() {
+      const createList = (items, type) => {
+        return items.map(item => `
+          <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+            <span><i class="fas fa-tag text-muted me-2"></i> ${item}</span>
+            <button class="btn btn-sm text-danger" onclick="deleteItem('${type}', '${item}')">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </li>
+        `).join('');
+      };
+
+      document.getElementById('listIncome').innerHTML = createList(globalData.income, 'income');
+      document.getElementById('listExpense').innerHTML = createList(globalData.expense, 'expense');
+      document.getElementById('listBank').innerHTML = createList(globalData.banks, 'bank');
+    }
+
+    function addItem(type) {
+      let inputId = (type === 'income') ? 'newIncomeCat' : (type === 'expense') ? 'newExpenseCat' : 'newBank';
+      const val = document.getElementById(inputId).value;
+      if(!val) return;
+
+      google.script.run.withSuccessHandler(newData => {
+        globalData = newData;
+        document.getElementById(inputId).value = '';
+        renderSettingsLists();
+      }).addSettingItem(type, val);
+    }
+
+    function deleteItem(type, val) {
+      if(!confirm('ຕ້ອງການລຶບ ' + val + ' ແທ້ບໍ່?')) return;
+      google.script.run.withSuccessHandler(newData => {
+        globalData = newData;
+        renderSettingsLists();
+      }).deleteSettingItem(type, val);
+    }
+  </script>
+</body>
+</html>
